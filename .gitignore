@@ -1,0 +1,25 @@
+# Environment secrets — never commit
+.env
+.env.local
+.env.*.local
+contracts/.env
+backend/.env
+frontend/.env
+
+# Foundry build artifacts
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Node
+node_modules/
+dist/
+.turbo/
+
+# Coverage
+lcov.info
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db

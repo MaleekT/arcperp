@@ -1,0 +1,29 @@
+{
+  "name": "arcperp-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "liquidator": "tsx src/liquidator/index.ts",
+    "keeper": "tsx src/keeper/index.ts",
+    "price-server": "tsx src/priceServer/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@circle-fin/adapter-viem-v2": "^1.0.0",
+    "@circle-fin/app-kit": "^1.0.0",
+    "@circle-fin/developer-controlled-wallets": "^1.0.0",
+    "@pythnetwork/hermes-client": "^1.0.0",
+    "dotenv": "^16.0.0",
+    "node-cron": "^3.0.0",
+    "viem": "^2.0.0",
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.0",
+    "@types/ws": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

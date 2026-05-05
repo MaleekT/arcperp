@@ -1,0 +1,202 @@
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --bg-base: #0A0F1E;
+  --bg-surface: #0D1424;
+  --bg-elevated: #111827;
+  --bg-panel: #0F172A;
+
+  --border: rgba(0, 212, 200, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+
+  --cyan: #00D4C8;
+  --cyan-dim: rgba(0, 212, 200, 0.15);
+  --cyan-glow: rgba(0, 212, 200, 0.3);
+
+  --green: #00FF88;
+  --green-dim: rgba(0, 255, 136, 0.12);
+  --red: #FF3B6B;
+  --red-dim: rgba(255, 59, 107, 0.12);
+
+  --text-primary: #E2E8F0;
+  --text-secondary: #64748B;
+  --text-muted: #334155;
+  --text-price: #F8FAFC;
+
+  --font-price: "Space Mono", "Courier New", monospace;
+  --font-ui: "Inter", system-ui, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --duration-fast: 120ms;
+  --duration-normal: 240ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+
+body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { height: 100%; display: flex; flex-direction: column; }
+
+/* ── Scrollbars ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Typography ────────────────────────────────────────────────────────────── */
+.price { font-family: var(--font-price); letter-spacing: -0.02em; }
+.label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+.heading { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+
+/* ── Panel base ────────────────────────────────────────────────────────────── */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Button base ───────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: opacity var(--duration-fast), transform var(--duration-fast), background var(--duration-fast);
+  outline: none;
+}
+.btn:active { transform: scale(0.98); }
+.btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--cyan);
+  color: #0A0F1E;
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+.btn-long {
+  background: var(--green);
+  color: #0A0F1E;
+  font-weight: 700;
+}
+.btn-long:hover:not(:disabled) { opacity: 0.88; }
+
+.btn-short {
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+}
+.btn-short:hover:not(:disabled) { opacity: 0.88; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+.btn-ghost:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text-primary); }
+
+/* ── Input base ────────────────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-price);
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+.input:focus { border-color: var(--cyan); }
+.input::placeholder { color: var(--text-muted); }
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+/* ── Price flash animations ────────────────────────────────────────────────── */
+@keyframes flash-up {
+  0% { color: var(--green); }
+  100% { color: inherit; }
+}
+@keyframes flash-down {
+  0% { color: var(--red); }
+  100% { color: inherit; }
+}
+
+.price-up { animation: flash-up 600ms var(--ease-out) forwards; }
+.price-down { animation: flash-down 600ms var(--ease-out) forwards; }
+
+/* ── Health bar ────────────────────────────────────────────────────────────── */
+.health-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+.health-bar__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--duration-normal) var(--ease-out), background var(--duration-normal);
+}
+.health-bar__fill--safe { background: var(--green); }
+.health-bar__fill--warn { background: #F59E0B; }
+.health-bar__fill--danger { background: var(--red); }
+
+/* ── Tab strip ─────────────────────────────────────────────────────────────── */
+.tab-strip { display: flex; gap: 2px; padding: 4px; background: var(--bg-elevated); border-radius: var(--radius-md); }
+
+.tab {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background var(--duration-fast), color var(--duration-fast);
+  text-align: center;
+}
+.tab:hover { color: var(--text-primary); }
+.tab--active { background: var(--bg-panel); color: var(--text-primary); }
+.tab:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+
+/* ── Divider ───────────────────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border-subtle); }
+
+/* ── Badge ─────────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badge--long { background: var(--green-dim); color: var(--green); }
+.badge--short { background: var(--red-dim); color: var(--red); }
+.badge--cyan { background: var(--cyan-dim); color: var(--cyan); }
