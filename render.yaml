@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: arcperp-price-server
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm run price-server
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PYTH_HERMES_URL
+        value: https://hermes.pyth.network

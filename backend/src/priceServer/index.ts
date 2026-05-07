@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { WebSocketServer, WebSocket } from "ws";
 
-const PORT = parseInt(process.env.PRICE_SERVER_PORT ?? "8081", 10);
+// Render injects PORT automatically; fall back to PRICE_SERVER_PORT for local dev
+const PORT = parseInt(process.env.PORT ?? process.env.PRICE_SERVER_PORT ?? "8081", 10);
 const POLL_INTERVAL_MS = 1_000;
 const HERMES = "https://hermes.pyth.network";
 
