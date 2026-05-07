@@ -5,8 +5,16 @@ libs = ["lib"]
 solc = "0.8.26"
 optimizer = true
 optimizer_runs = 200
-via_ir = false
+via_ir = true
 fuzz = { runs = 10000 }
+fs_permissions = [{ access = "read-write", path = "./deployments/" }]
+
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@pythnetwork/pyth-sdk-solidity/=lib/pyth-sdk-solidity/",
+    "forge-std/=lib/openzeppelin-contracts/lib/forge-std/src/",
+    "chainlink-brownie-contracts/=lib/chainlink-brownie-contracts/",
+]
 
 [rpc_endpoints]
 arc_testnet = "${ARC_RPC_URL}"

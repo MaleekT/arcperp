@@ -8,6 +8,21 @@ import "../src/FeeCollector.sol";
 import "../src/PerpEngine.sol";
 import "../src/LiquidationEngine.sol";
 
+/// @dev Minimal Chainlink-compatible feed for testnet-only use.
+///      Never deployed when CHAINLINK_*_FEED env vars are set to real addresses.
+contract TestnetMockFeed {
+    int256 private _answer;
+    uint8 public constant decimals = 8;
+
+    constructor(int256 initialAnswer) { _answer = initialAnswer; }
+
+    function latestRoundData() external view returns (
+        uint80, int256 answer, uint256, uint256 updatedAt, uint80
+    ) {
+        return (1, _answer, block.timestamp, block.timestamp, 1);
+    }
+}
+
 /// @title DeployAll
 /// @notice One-command deploy for ArcPerp on Arc Network (Chain ID 5042002).
 ///
@@ -78,18 +93,36 @@ contract DeployAll is Script {
     function run() external {
         // ── Read env vars ─────────────────────────────────────────────────────
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address admin = vm.envAddress("ADMIN_ADDRESS");
-        address treasury = vm.envAddress("TREASURY_ADDRESS");
-        address chainlinkBtc = vm.envAddress("CHAINLINK_BTC_FEED");
-        address chainlinkEth = vm.envAddress("CHAINLINK_ETH_FEED");
-        address chainlinkEurc = vm.envAddress("CHAINLINK_EURC_FEED");
-
         address deployer = vm.addr(deployerKey);
+
+        // Optional — default to deployer for testnet single-admin setup
+        address admin    = vm.envOr("ADMIN_ADDRESS",    deployer);
+        address treasury = vm.envOr("TREASURY_ADDRESS", deployer);
+
+        // Chainlink feeds — zero address triggers testnet mock deployment below
+        address chainlinkBtc  = vm.envOr("CHAINLINK_BTC_FEED",  address(0));
+        address chainlinkEth  = vm.envOr("CHAINLINK_ETH_FEED",  address(0));
+        address chainlinkEurc = vm.envOr("CHAINLINK_EURC_FEED", address(0));
+
         console2.log("Deploying from:", deployer);
         console2.log("Admin:", admin);
         console2.log("Treasury:", treasury);
 
         vm.startBroadcast(deployerKey);
+
+        // Deploy testnet mock feeds for any pair that doesn't have a live Chainlink feed
+        if (chainlinkBtc == address(0)) {
+            chainlinkBtc = address(new TestnetMockFeed(9500000000000)); // $95,000
+            console2.log("Deployed testnet BTC feed:", chainlinkBtc);
+        }
+        if (chainlinkEth == address(0)) {
+            chainlinkEth = address(new TestnetMockFeed(180000000000)); // $1,800
+            console2.log("Deployed testnet ETH feed:", chainlinkEth);
+        }
+        if (chainlinkEurc == address(0)) {
+            chainlinkEurc = address(new TestnetMockFeed(110000000)); // $1.10
+            console2.log("Deployed testnet EURC feed:", chainlinkEurc);
+        }
 
         // ── Step 1: VaultManager ──────────────────────────────────────────────
         vault = new VaultManager(USDC, admin);

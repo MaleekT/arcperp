@@ -35,6 +35,9 @@ contract LiquidationEngineTest is Test {
     bytes[] internal emptyVaa;
 
     function setUp() public {
+        // Advance timestamp so block.timestamp - 31 doesn't underflow (default is 1)
+        vm.warp(4 hours);
+
         usdc = new MockUSDC();
         mockPyth = new MockPyth(0);
         mockChainlink = new MockChainlink(8);

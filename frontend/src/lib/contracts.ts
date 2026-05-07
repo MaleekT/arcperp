@@ -1,18 +1,20 @@
 import { createPublicClient, defineChain, http, keccak256, toBytes } from "viem";
 import { VAULT_ABI, PERP_ENGINE_ABI, LIQ_ENGINE_ABI, ERC20_ABI } from "./abis/index.js";
 
-/** Throws at module load time if a required env var is missing or invalid. */
-function requireEnv(key: string, fallback?: string): string {
-  const value = import.meta.env[key] ?? fallback;
-  if (!value) throw new Error(`Missing required env var: ${key}. Set it in .env.local`);
+function requireEnv(key: string, fallback: string): string {
+  const value = import.meta.env[key] as string | undefined;
+  if (!value) {
+    console.warn(`[contracts] ${key} not set — using fallback`);
+    return fallback;
+  }
   return value;
 }
 
-/** Requires an env var that must be a 0x-prefixed Ethereum address. */
-function requireAddress(key: string, fallback?: string): `0x${string}` {
+function requireAddress(key: string, fallback: string): `0x${string}` {
   const value = requireEnv(key, fallback);
   if (!/^0x[0-9a-fA-F]{40}$/.test(value)) {
-    throw new Error(`Env var ${key}="${value}" is not a valid Ethereum address`);
+    console.warn(`[contracts] ${key}="${value}" is not a valid address — using fallback`);
+    return fallback as `0x${string}`;
   }
   return value as `0x${string}`;
 }
@@ -32,11 +34,13 @@ export const arcTestnet = defineChain({
   },
 });
 
+const ZERO = "0x0000000000000000000000000000000000000000";
+
 export const ADDRESSES = {
   usdc: requireAddress("VITE_USDC_ADDRESS", "0x3600000000000000000000000000000000000000"),
-  vault: requireAddress("VITE_VAULT_MANAGER_ADDRESS"),
-  perpEngine: requireAddress("VITE_PERP_ENGINE_ADDRESS"),
-  liqEngine: requireAddress("VITE_LIQUIDATION_ENGINE_ADDRESS"),
+  vault: requireAddress("VITE_VAULT_MANAGER_ADDRESS", ZERO),
+  perpEngine: requireAddress("VITE_PERP_ENGINE_ADDRESS", ZERO),
+  liqEngine: requireAddress("VITE_LIQUIDATION_ENGINE_ADDRESS", ZERO),
 } as const;
 
 export const PAIR_IDS = {

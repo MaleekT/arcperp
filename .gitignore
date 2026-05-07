@@ -1,25 +1,35 @@
-# Environment secrets — never commit
+# ── Secrets & environment ─────────────────────────────────────────────────────
 .env
 .env.local
 .env.*.local
 contracts/.env
 backend/.env
 frontend/.env
+frontend/.env.local
 
-# Foundry build artifacts
-contracts/out/
-contracts/cache/
-contracts/broadcast/
-
-# Node
+# ── Node ──────────────────────────────────────────────────────────────────────
 node_modules/
 dist/
 .turbo/
+package-lock.json
 
-# Coverage
+# ── Logs & runtime output ─────────────────────────────────────────────────────
+*.log
+*.err
+frontend-dev.log
+price-server.log
+
+# ── Foundry ───────────────────────────────────────────────────────────────────
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/foundry.lock
 lcov.info
 coverage/
 
-# OS
+# ── Editor / OS ───────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+.claude/
+frontend/.claude/
+.vscode/

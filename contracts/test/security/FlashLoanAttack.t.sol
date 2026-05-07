@@ -61,7 +61,8 @@ contract FlashLoanAttacker {
         // Any attempt to supply a fake price via VAA will fail signature verification
         // (In test environment, MockPyth accepts whatever is set via setPrice,
         //  but on mainnet the VAA is cryptographically verified by the Pyth contract)
-        _ = fakePrice;
+        // suppress unused variable warning
+        assembly { pop(fakePrice) }
     }
 }
 

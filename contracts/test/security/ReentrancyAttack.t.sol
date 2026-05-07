@@ -168,24 +168,27 @@ contract ReentrancyAttackTest is Test {
         ReentrantFeeClaimAttacker claimAttacker = new ReentrantFeeClaimAttacker();
         claimAttacker.setup(address(cbFeeCollector));
 
+        vm.startPrank(admin);
+        // Let claimAttacker call claimProtocolFees (it needs DEFAULT_ADMIN_ROLE)
+        cbFeeCollector.grantRole(cbFeeCollector.DEFAULT_ADMIN_ROLE(), address(claimAttacker));
+        // Let this test contract call collectFee to populate _pendingTreasuryFees properly
+        cbFeeCollector.grantRole(cbFeeCollector.PERP_ENGINE_ROLE(), address(this));
+        // FeeCollector.collectFee sends 5% to vault — vault needs to accept it
+        cbVault.grantRole(cbVault.LIQUIDATION_ENGINE_ROLE(), address(cbFeeCollector));
+        vm.stopPrank();
+
+        // Mint USDC to cbFeeCollector and call collectFee to properly set _pendingTreasuryFees
+        // (1000e6 fee → 950e6 treasury share + 50e6 insurance share sent to vault)
+        uint256 fee = 1_000e6;
+        callbackUsdc.mint(address(cbFeeCollector), fee);
+        // callbackTarget is address(0) here — no callback fires during fee collection
+        cbFeeCollector.collectFee(address(this), fee, bytes32("test"));
+
+        // Now arm the callback so re-entry triggers on the claim transfer
         callbackUsdc.setCallbackTarget(address(claimAttacker));
 
-        // Grant claimAttacker DEFAULT_ADMIN_ROLE so it can call claimProtocolFees
-        vm.prank(admin);
-        cbFeeCollector.grantRole(cbFeeCollector.DEFAULT_ADMIN_ROLE(), address(claimAttacker));
-
-        // Pre-fund FeeCollector with pending treasury fees
-        callbackUsdc.mint(address(cbFeeCollector), 100e6);
-        // Manually set pending fees by having perpEngine call collectFee
-        // We'll simulate by just having USDC in the contract for the claim attempt
-        // Use the admin to set up a valid pending fee scenario
-        vm.prank(admin);
-        vm.store(
-            address(cbFeeCollector),
-            bytes32(uint256(6)), // _pendingTreasuryFees slot (approx — foundry can read storage)
-            bytes32(uint256(100e6))
-        );
-
+        // claimAttacker.attack() calls claimProtocolFees → safeTransfer → callback →
+        // re-enters claimProtocolFees → nonReentrant blocks → entire tx reverts
         vm.expectRevert();
         claimAttacker.attack();
     }

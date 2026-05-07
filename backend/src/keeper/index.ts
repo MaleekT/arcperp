@@ -58,7 +58,10 @@ async function fetchKrakenPrice(pair: string): Promise<number> {
   const data = (await r.json()) as { result: Record<string, { c: string[] }> };
   const key = Object.keys(data.result)[0];
   if (!key) throw new Error(`Kraken: no result for ${pair}`);
-  return parseFloat(data.result[key].c[0]);
+  const entry = data.result[key];
+  const price = entry?.c[0];
+  if (!price) throw new Error(`Kraken: missing price data for ${pair}`);
+  return parseFloat(price);
 }
 
 type PairSymbol = "BTC" | "ETH" | "EURC";
@@ -90,7 +93,8 @@ async function getAggregateIndexPrice(symbol: PairSymbol): Promise<bigint> {
   if (prices.length === 0) throw new Error(`No CEX prices available for ${symbol}`);
 
   prices.sort((a, b) => a - b);
-  const median = prices[Math.floor(prices.length / 2)];
+  const median = prices[Math.floor(prices.length / 2)] ?? prices[0];
+  if (median === undefined) throw new Error(`No prices for ${symbol}`);
   return BigInt(Math.round(median * 1e8));
 }
 

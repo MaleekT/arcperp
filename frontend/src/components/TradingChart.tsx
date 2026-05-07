@@ -37,7 +37,6 @@ export function TradingChart({ pair, prices }: Props) {
       },
       timeScale: {
         borderColor: "rgba(255,255,255,0.06)",
-        textColor: "#64748B",
         timeVisible: true,
         secondsVisible: false,
       },

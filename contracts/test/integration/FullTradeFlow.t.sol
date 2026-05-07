@@ -156,20 +156,26 @@ contract FullTradeFlowTest is Test {
     // ── Test 4: Two traders on opposite sides ────────────────────────────────
 
     function test_fullFlow_oppositePositions_correctPnLSigns() public {
-        // Trader 1: 10x long BTC
+        uint256 startBlock = block.number;
+
+        // Trader 1: 10x long BTC — opened at startBlock
         vm.prank(trader);
         bytes32 longId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
-        vm.roll(block.number + 1);
 
-        // Trader 2: 10x short BTC (needs its own block to not conflict positionId)
+        // Advance so shortId gets a different block-based position ID
+        vm.roll(startBlock + 1);
+
+        // Trader 2: 10x short BTC — opened at startBlock + 1
         vm.prank(trader2);
         bytes32 shortId = engine.openPosition(BTC_USDC, false, MARGIN, LEVERAGE_10X, emptyVaa);
-        vm.roll(block.number + 1);
 
         // Price moves up 5%
         int256 newPrice = BTC_PRICE * 105 / 100;
         mockPyth.setPrice(PYTH_BTC_ID, int64(newPrice), -8, block.timestamp);
         mockChainlink.setAnswer(newPrice);
+
+        // Roll well past both openedAtBlock values before closing
+        vm.roll(startBlock + 10);
 
         vm.prank(trader);
         int256 longPnl = engine.closePosition(longId, emptyVaa);

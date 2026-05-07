@@ -1,4 +1,4 @@
-import { usePrivy } from "@privy-io/react-auth";
+import { useWallet } from "../lib/wallet.js";
 import { useMarginBalance } from "../hooks/useMarginBalance.js";
 
 /** Renders a USDC bigint (1e6 precision) as "$1,234.56". Safe: pure arithmetic, no interpolation of external input. */
@@ -13,8 +13,7 @@ function truncateAddress(addr: string): string {
 }
 
 export function WalletButton() {
-  const { ready, authenticated, login, logout, user } = usePrivy();
-  const trader = user?.wallet?.address as `0x${string}` | undefined;
+  const { ready, authenticated, login, logout, address: trader } = useWallet();
   const { balance } = useMarginBalance(trader);
 
   if (!ready) {

@@ -72,11 +72,16 @@ contract FuzzLiquidationTest is Test {
         internal
         returns (bytes32 posId)
     {
-        usdc.mint(trader, margin);
+        // openPosition debits margin + takerFee from vault, so deposit both
+        uint256 notional = margin * leverageBps / 100;
+        uint256 fee = notional * 5 / 10_000; // takerFeeBps = 5
+        uint256 totalDeposit = margin + fee;
+
+        usdc.mint(trader, totalDeposit);
         vm.prank(trader);
         usdc.approve(address(vault), type(uint256).max);
         vm.prank(trader);
-        vault.deposit(margin);
+        vault.deposit(totalDeposit);
         vm.prank(trader);
         posId = engine.openPosition(BTC_USDC, isLong, margin, leverageBps, emptyVaa);
         vm.roll(block.number + 1);

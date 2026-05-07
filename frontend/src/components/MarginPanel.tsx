@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useWallet } from "../lib/wallet.js";
 import { createWalletClient, custom, parseUnits } from "viem";
 import { arcTestnet, vaultContract, usdcContract, ADDRESSES } from "../lib/contracts.js";
 import { useMarginBalance } from "../hooks/useMarginBalance.js";
@@ -16,8 +16,7 @@ interface Props {
 }
 
 export function MarginPanel({ trader }: Props) {
-  const { authenticated, login } = usePrivy();
-  const { wallets } = useWallets();
+  const { authenticated, login, getProvider } = useWallet();
   const { balance, refetch } = useMarginBalance(trader);
   const [tab, setTab] = useState<Tab>("deposit");
   const [amount, setAmount] = useState("");
@@ -27,7 +26,7 @@ export function MarginPanel({ trader }: Props) {
 
   async function handleSubmit() {
     if (!authenticated) { login(); return; }
-    if (!trader || !wallets[0]) return;
+    if (!trader) return;
 
     const parsed = parseFloat(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) { setError("Enter a valid amount"); return; }
@@ -37,7 +36,7 @@ export function MarginPanel({ trader }: Props) {
     setSuccess(null);
 
     try {
-      const provider = await wallets[0].getEthereumProvider();
+      const provider = await getProvider();
       const walletClient = createWalletClient({ account: trader, chain: arcTestnet, transport: custom(provider) });
       const amountBn = parseUnits(parsed.toFixed(6), 6);
 

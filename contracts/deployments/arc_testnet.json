@@ -1,0 +1,33 @@
+{
+  "network": "arc_testnet",
+  "chainId": 5042002,
+  "deployedAt": 1778071649,
+  "deployer": "0xA2bB4236f88F7e655Fe0630092D9569946Ad6ae9",
+  "admin": "0xA2bB4236f88F7e655Fe0630092D9569946Ad6ae9",
+  "treasury": "0xA2bB4236f88F7e655Fe0630092D9569946Ad6ae9",
+  "contracts": {
+    "usdc": "0x3600000000000000000000000000000000000000",
+    "pyth": "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
+    "vaultManager": "0x5Fa17b9d90C5bC74Ec9Ef42ca149Fb9c5c096899",
+    "feeCollector": "0xF4d264943637CAEd0812c9B61a9060623ba5Fb9a",
+    "perpEngine": "0xdc07cbe108Aae0B83356ccc5a8fDb1E728418d4f",
+    "liquidationEngine": "0xB2ff23167F9c965f6D7060324f348c77eD3E4B2c"
+  },
+  "pairs": {
+    "BTC-USDC": {
+      "id": "0xdf341c7613634a42cc61efc83db29a7cfbbb79500e215b82d72d7e08a7756247",
+      "pythPriceId": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+      "chainlinkFeed": "0x8a62C7B6377a9E0287061C69C7b708ca5f1a4cd5"
+    },
+    "ETH-USDC": {
+      "id": "0xd7c55e13a482c46ef0f9a2319e6a727f48a445851591103a2ffc2e2acb9b61e9",
+      "pythPriceId": "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+      "chainlinkFeed": "0xedCFef6b450470805798ebfeFF719114e7F771C2"
+    },
+    "EURC-USDC": {
+      "id": "0xe6ce5d6c16ff2ba4f485819624b658a6f10aac7372a35d950ecfe1f3877ca8da",
+      "pythPriceId": "0x76fa85158bf14ede77087fe3ae472f66213f6ea2ceb0e6d71d3424ef6fb5bbfb",
+      "chainlinkFeed": "0x42f9C7BDa6242B383dEb931958e95EcD8f2E005B"
+    }
+  }
+}

@@ -38,6 +38,9 @@ contract OracleManipulationTest is Test {
     bytes[] internal emptyVaa;
 
     function setUp() public {
+        // Advance timestamp so block.timestamp - STALENESS - 1 doesn't underflow (default is 1)
+        vm.warp(4 hours);
+
         usdc = new MockUSDC();
         mockPyth = new MockPyth(0);
         mockChainlink = new MockChainlink(8);
@@ -116,12 +119,19 @@ contract OracleManipulationTest is Test {
 
     function test_oracle_deviationTooLarge_reverts() public {
         // Pyth: $67,000, Chainlink: $60,000
-        // deviation = (67000 - 60000) / 67000 ≈ 10.4% > 10% threshold
+        // deviation = (67000 - 60000) * 10000 / 67000 = 1044 bps > 1000 bps (10%)
         mockPyth.setPrice(PYTH_BTC_ID, int64(BTC_PRICE), -8, block.timestamp);
         mockChainlink.setAnswer(60_000e8); // ~10.4% below Pyth
 
+        // OraclePriceDeviation carries (pythPrice, chainlinkPrice, deviationBps) — use full encoding
+        uint256 pythPrice = uint256(BTC_PRICE);
+        uint256 chainlinkPrice = uint256(60_000e8);
+        uint256 deviationBps = (pythPrice - chainlinkPrice) * 10_000 / pythPrice; // 1044
+
         vm.prank(trader);
-        vm.expectRevert(OracleLib.OraclePriceDeviation.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(OracleLib.OraclePriceDeviation.selector, pythPrice, chainlinkPrice, deviationBps)
+        );
         engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
     }
 
@@ -184,11 +194,11 @@ contract OracleManipulationTest is Test {
     }
 
     // Helper
-    function assertNe(bytes32 a, bytes32 b, string memory reason) internal pure {
+    function assertNe(bytes32 a, bytes32 b, string memory reason) internal {
         assertFalse(a == b, reason);
     }
 
-    function assertNe(bytes32 a, bytes32 b) internal pure {
+    function assertNe(bytes32 a, bytes32 b) internal {
         assertFalse(a == b);
     }
 }

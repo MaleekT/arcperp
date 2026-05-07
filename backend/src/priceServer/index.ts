@@ -1,40 +1,35 @@
-/**
- * ArcPerp WebSocket Price Server
- *
- * Subscribes to Pyth Hermes for BTC, ETH, and EURC prices (sub-100ms updates)
- * and broadcasts them to all connected frontend clients on port 8080.
- *
- * Message format: { pair: "BTC-USDC", price: "67000.12345678", timestamp: 1234567890 }
- */
-
 import "dotenv/config";
 import { WebSocketServer, WebSocket } from "ws";
-import { HermesClient } from "@pythnetwork/hermes-client";
-import { validateEnv } from "../lib/arc.js";
 
-validateEnv(["ARC_RPC_URL"]);
+const PORT = parseInt(process.env.PRICE_SERVER_PORT ?? "8081", 10);
+const POLL_INTERVAL_MS = 1_000;
+const HERMES = "https://hermes.pyth.network";
 
-const PORT = parseInt(process.env.PRICE_SERVER_PORT ?? "8080", 10);
-
-const PYTH_IDS = {
-  "BTC-USDC": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
-  "ETH-USDC": "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
-  "EURC-USDC": "0x76fa85158bf14ede77087fe3ae472f66213f6ea2ceb0e6d71d3424ef6fb5bbfb",
-} as const;
-
-const FEED_IDS = Object.values(PYTH_IDS);
-
-// ── Message types ─────────────────────────────────────────────────────────────
+// EUR/USD used as EURC/USD proxy (EURC is a EUR-pegged stablecoin)
+const PAIRS: Record<string, string> = {
+  "BTC-USDC": "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+  "ETH-USDC": "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+  "EURC-USDC": "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b",
+};
 
 interface PriceMessage {
   pair: string;
-  price: string;       // decimal string, 8 decimal places
-  priceRaw: string;    // integer string in 1e8 precision
+  price: string;
+  priceRaw: string;
   timestamp: number;
   source: "pyth";
 }
 
-// ── Server ────────────────────────────────────────────────────────────────────
+interface HermesParsedPrice {
+  id: string;
+  price: { price: string; conf: string; expo: number; publish_time: number };
+}
+
+interface HermesResponse {
+  parsed: HermesParsedPrice[];
+}
+
+// ── WebSocket server ──────────────────────────────────────────────────────────
 
 const wss = new WebSocketServer({ port: PORT });
 const clients = new Set<WebSocket>();
@@ -42,110 +37,71 @@ const clients = new Set<WebSocket>();
 wss.on("connection", (ws) => {
   clients.add(ws);
   console.log(`[priceServer] Client connected (total: ${clients.size})`);
-
-  ws.on("close", () => {
-    clients.delete(ws);
-    console.log(`[priceServer] Client disconnected (total: ${clients.size})`);
-  });
-
-  ws.on("error", (err) => {
-    console.error("[priceServer] Client error:", err.message);
-    clients.delete(ws);
-  });
+  ws.on("close", () => { clients.delete(ws); });
+  ws.on("error", () => clients.delete(ws));
 });
 
 function broadcast(msg: PriceMessage): void {
-  if (clients.size === 0) return;
   const payload = JSON.stringify(msg);
   for (const ws of clients) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(payload);
-    }
+    if (ws.readyState === WebSocket.OPEN) ws.send(payload);
   }
 }
 
-// ── Pyth streaming ────────────────────────────────────────────────────────────
+// ── Price math ────────────────────────────────────────────────────────────────
 
-/** Normalizes a Pyth price (with expo) to a decimal string */
-function normalizePrice(price: string | number, expo: number): { decimal: string; raw: string } {
-  const priceInt = BigInt(price);
-  // expo is typically negative (e.g. -8): price * 10^expo = human price
-  if (expo >= 0) {
-    const raw = (priceInt * 10n ** BigInt(expo)).toString();
-    const decimal = raw + ".00000000";
-    return { decimal, raw };
-  }
+function toDecimal(price: string, expo: number): string {
+  const p = BigInt(price);
+  if (expo >= 0) return `${p * 10n ** BigInt(expo)}.00000000`;
   const absExpo = -expo;
-  const divisor = 10n ** BigInt(absExpo);
-  const whole = priceInt / divisor;
-  const frac = priceInt % divisor;
-  const decimal = `${whole}.${frac.toString().padStart(absExpo, "0")}`;
-  // Normalize to 1e8
-  const normalized = absExpo === 8 ? priceInt : priceInt * 10n ** BigInt(absExpo - 8);
-  return { decimal, raw: normalized.toString() };
+  const div = 10n ** BigInt(absExpo);
+  const whole = p / div;
+  const frac = p % div;
+  return `${whole}.${frac.toString().padStart(absExpo, "0")}`;
 }
 
-function findPairForFeedId(feedId: string): string | undefined {
-  for (const [pair, id] of Object.entries(PYTH_IDS)) {
-    if (id.toLowerCase() === `0x${feedId}`.toLowerCase() || id.toLowerCase() === feedId.toLowerCase()) {
-      return pair;
-    }
+function toRaw(price: string, expo: number): string {
+  const p = BigInt(price);
+  // Normalise to 1e8 precision
+  if (expo >= -8) return (p * 10n ** BigInt(8 + expo)).toString();   // scale up
+  return (p / 10n ** BigInt(-expo - 8)).toString();                    // scale down
+}
+
+// ── Poll loop ─────────────────────────────────────────────────────────────────
+
+const feedIds = Object.values(PAIRS);
+const idQuery = feedIds.map((id) => `ids[]=${id}`).join("&");
+const url = `${HERMES}/v2/updates/price/latest?${idQuery}&parsed=true`;
+
+const idToPair: Record<string, string> = {};
+for (const [pair, id] of Object.entries(PAIRS)) idToPair[id.toLowerCase()] = pair;
+
+async function pollOnce(): Promise<void> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error(`[priceServer] Hermes HTTP ${res.status}: ${await res.text()}`);
+    return;
   }
-  return undefined;
+  const data = await res.json() as HermesResponse;
+  if (!data.parsed?.length) return;
+
+  let logged = false;
+  for (const feed of data.parsed) {
+    const pair = idToPair[feed.id.toLowerCase()];
+    if (!pair) continue;
+    const decimal = toDecimal(feed.price.price, feed.price.expo);
+    const raw = toRaw(feed.price.price, feed.price.expo);
+    broadcast({ pair, price: decimal, priceRaw: raw, timestamp: feed.price.publish_time, source: "pyth" });
+    if (!logged) { console.log(`[priceServer] ${pair} $${decimal.slice(0, 10)}`); logged = true; }
+  }
 }
 
-async function startPythStream(): Promise<void> {
-  const hermes = new HermesClient("https://hermes.pyth.network");
-
-  const eventSource = await hermes.getPriceUpdatesStream(FEED_IDS, {
-    parsed: true,
-    allowUnordered: false,
-    benchmarksOnly: false,
-  });
-
-  eventSource.onmessage = (event: MessageEvent) => {
-    try {
-      const data = JSON.parse(event.data as string) as {
-        parsed?: Array<{ id: string; price: { price: string; expo: number; publish_time: number } }>;
-      };
-      if (!data.parsed) return;
-
-      for (const feed of data.parsed) {
-        const pair = findPairForFeedId(feed.id);
-        if (!pair) continue;
-
-        const { decimal, raw } = normalizePrice(feed.price.price, feed.price.expo);
-
-        broadcast({
-          pair,
-          price: decimal,
-          priceRaw: raw,
-          timestamp: feed.price.publish_time,
-          source: "pyth",
-        });
-      }
-    } catch (err) {
-      console.error("[priceServer] Parse error:", (err as Error).message);
-    }
-  };
-
-  eventSource.onerror = (err: Event) => {
-    console.error("[priceServer] Pyth stream error — reconnecting in 5s...", err);
-    setTimeout(() => startPythStream().catch(console.error), 5_000);
-  };
-
-  console.log("[priceServer] Pyth price stream active");
+async function pollLoop(): Promise<void> {
+  while (true) {
+    try { await pollOnce(); } catch (err) { console.error("[priceServer] Error:", (err as Error).message); }
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
 }
 
-// ── Entry point ───────────────────────────────────────────────────────────────
-
-async function main(): Promise<void> {
-  console.log(`[priceServer] WebSocket server listening on ws://localhost:${PORT}`);
-
-  await startPythStream();
-}
-
-main().catch((err) => {
-  console.error("[priceServer] Fatal error:", err);
-  process.exit(1);
-});
+console.log(`[priceServer] Listening on ws://localhost:${PORT}`);
+pollLoop().catch((err) => { console.error("[priceServer] Fatal:", err); process.exit(1); });

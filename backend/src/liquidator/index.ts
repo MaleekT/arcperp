@@ -190,10 +190,13 @@ async function scanAndLiquidate(): Promise<void> {
 
   const toLiquidate: Hex[] = [];
   for (let i = 0; i < positionIds.length; i++) {
-    const result = checks[i];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const result = checks[i]!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const posId = positionIds[i]!;
     if (result.status === "success") {
       const [liquidatable] = result.result as [boolean, bigint];
-      if (liquidatable) toLiquidate.push(positionIds[i]);
+      if (liquidatable) toLiquidate.push(posId);
     }
   }
 

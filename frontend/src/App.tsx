@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
-import { ApolloClient, ApolloProvider, InMemoryCache } from "@apollo/client";
-import { WagmiProvider, createConfig } from "wagmi";
-import { http } from "viem";
+import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink } from "@apollo/client";
+import { WalletProvider, useWallet } from "./lib/wallet.js";
 import { arcTestnet, PAIRS } from "./lib/contracts.js";
 import { WalletButton } from "./components/WalletButton.js";
 import { TradingChart } from "./components/TradingChart.js";
@@ -15,13 +13,8 @@ import "./styles/globals.css";
 
 // ── Provider setup ────────────────────────────────────────────────────────────
 
-const wagmiConfig = createConfig({
-  chains: [arcTestnet],
-  transports: { [arcTestnet.id]: http() },
-});
-
 const apolloClient = new ApolloClient({
-  uri: import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:8080/graphql",
+  link: new HttpLink({ uri: (import.meta.env.VITE_GRAPHQL_URL as string | undefined) ?? "http://localhost:8080/graphql" }),
   cache: new InMemoryCache(),
 });
 
@@ -32,12 +25,10 @@ const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID ?? "";
 type ActiveView = "trade" | "analytics";
 
 function AppShell() {
-  const { user } = usePrivy();
-  const [activePair, setActivePair] = useState(PAIRS[0]);
+  const { address } = useWallet();
+  const [activePair, setActivePair] = useState<typeof PAIRS[number]>(PAIRS[0]);
   const [activeView, setActiveView] = useState<ActiveView>("trade");
   const prices = usePrices();
-
-  const trader = user?.wallet?.address as `0x${string}` | undefined;
 
   return (
     <div style={styles.root}>
@@ -89,16 +80,14 @@ function AppShell() {
         <AnalyticsDashboard />
       ) : (
         <div style={styles.main}>
-          {/* Left: chart */}
           <div style={styles.chartArea}>
             <TradingChart pair={activePair} prices={prices} />
-            <PositionsPanel trader={trader} prices={prices} />
+            <PositionsPanel trader={address} prices={prices} />
           </div>
 
-          {/* Right: order + margin panels */}
           <div style={styles.sidebar}>
-            <MarginPanel trader={trader} />
-            <OrderPanel pair={activePair} trader={trader} prices={prices} />
+            <MarginPanel trader={address} />
+            <OrderPanel pair={activePair} trader={address} prices={prices} />
           </div>
         </div>
       )}
@@ -110,21 +99,11 @@ function AppShell() {
 
 export default function App() {
   return (
-    <PrivyProvider
-      appId={PRIVY_APP_ID}
-      config={{
-        loginMethods: ["email", "google", "wallet"],
-        appearance: { theme: "dark", accentColor: "#00D4C8" },
-        defaultChain: arcTestnet,
-        supportedChains: [arcTestnet],
-      }}
-    >
-      <WagmiProvider config={wagmiConfig}>
-        <ApolloProvider client={apolloClient}>
-          <AppShell />
-        </ApolloProvider>
-      </WagmiProvider>
-    </PrivyProvider>
+    <WalletProvider privyAppId={PRIVY_APP_ID} chain={arcTestnet}>
+      <ApolloProvider client={apolloClient}>
+        <AppShell />
+      </ApolloProvider>
+    </WalletProvider>
   );
 }
 

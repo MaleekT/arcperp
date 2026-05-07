@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../../src/PerpEngine.sol";
 import "../../src/VaultManager.sol";
 import "../../src/FeeCollector.sol";
+import "../../src/libraries/OracleLib.sol";
 import "../mocks/MockUSDC.sol";
 import "../mocks/MockPyth.sol";
 import "../mocks/MockChainlink.sol";
@@ -37,6 +38,9 @@ contract PerpEngineTest is Test {
     bytes[] internal emptyVaa;
 
     function setUp() public {
+        // Advance timestamp so block.timestamp - STALENESS_THRESHOLD - 1 doesn't underflow (default is 1)
+        vm.warp(4 hours);
+
         usdc = new MockUSDC();
         mockPyth = new MockPyth(0);
         mockChainlink = new MockChainlink(8);
@@ -120,11 +124,12 @@ contract PerpEngineTest is Test {
     }
 
     function test_openPosition_revertsStaleOracle() public {
-        // Publish time is STALENESS_THRESHOLD+1 seconds in the past — must be rejected by OracleLib
+        // Both oracles stale — OracleLib cannot fall back to Chainlink when Pyth is stale
         mockPyth.setPrice(PYTH_BTC_ID, int64(BTC_PRICE), -8, block.timestamp - STALENESS_THRESHOLD - 1);
+        mockChainlink.setUpdatedAt(block.timestamp - 1 hours - 1);
 
         vm.prank(trader);
-        vm.expectRevert();
+        vm.expectRevert(OracleLib.BothOraclesUnavailable.selector);
         engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
     }
 

@@ -16,6 +16,7 @@ contract MockPyth is IPyth {
 
     mapping(bytes32 => MockPrice) private _prices;
     uint256 public mockUpdateFee;
+    uint256 public validTimePeriod = 60;
 
     constructor(uint256 _updateFee) {
         mockUpdateFee = _updateFee;
@@ -32,12 +33,16 @@ contract MockPyth is IPyth {
 
     // ── IPyth implementation ──────────────────────────────────────────────────
 
+    function getValidTimePeriod() external view override returns (uint) {
+        return validTimePeriod;
+    }
+
     function getPrice(bytes32 id) external view override returns (PythStructs.Price memory) {
         MockPrice memory mp = _prices[id];
         return PythStructs.Price({price: mp.price, conf: mp.conf, expo: mp.expo, publishTime: mp.publishTime});
     }
 
-    function getPriceNoOlderThan(bytes32 id, uint256 age) external view override returns (PythStructs.Price memory) {
+    function getPriceNoOlderThan(bytes32 id, uint age) external view override returns (PythStructs.Price memory) {
         MockPrice memory mp = _prices[id];
         require(block.timestamp - mp.publishTime <= age, "MockPyth: stale price");
         return PythStructs.Price({price: mp.price, conf: mp.conf, expo: mp.expo, publishTime: mp.publishTime});
@@ -66,7 +71,7 @@ contract MockPyth is IPyth {
         return this.getPrice(id);
     }
 
-    function getEmaPriceNoOlderThan(bytes32 id, uint256 age)
+    function getEmaPriceNoOlderThan(bytes32 id, uint age)
         external
         view
         override
@@ -94,14 +99,5 @@ contract MockPyth is IPyth {
                 emaPrice: PythStructs.Price({price: mp.price, conf: mp.conf, expo: mp.expo, publishTime: mp.publishTime})
             });
         }
-    }
-
-    function parsePriceFeedUpdatesUnique(
-        bytes[] calldata updateData,
-        bytes32[] calldata priceIds,
-        uint64 minPublishTime,
-        uint64 maxPublishTime
-    ) external payable override returns (PythStructs.PriceFeed[] memory) {
-        return this.parsePriceFeedUpdates(updateData, priceIds, minPublishTime, maxPublishTime);
     }
 }
