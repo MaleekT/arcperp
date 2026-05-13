@@ -9,8 +9,9 @@ export const VAULT_ABI = parseAbi([
 
 export const PERP_ENGINE_ABI = parseAbi([
   // ── Core position functions ────────────────────────────────────────────────
-  "function openPosition(bytes32 pair, bool isLong, uint256 margin, uint256 leverageBps, uint256 minPrice, uint256 maxPrice, bytes[] calldata priceUpdateData) external payable returns (bytes32 positionId)",
-  "function closePosition(bytes32 positionId, bytes[] calldata priceUpdateData) external payable returns (int256 realizedPnl)",
+  // NOTE: update to 7-arg payable version after running MigratePerpEngine.s.sol
+  "function openPosition(bytes32 pair, bool isLong, uint256 margin, uint256 leverageBps, bytes[] calldata priceUpdateData) external returns (bytes32 positionId)",
+  "function closePosition(bytes32 positionId, bytes[] calldata priceUpdateData) external returns (int256 realizedPnl)",
   "function addMargin(bytes32 positionId, uint256 additionalMargin) external",
   "function removeMargin(bytes32 positionId, uint256 amount) external",
   "function closePartial(bytes32 positionId, uint256 fractionBps, bytes[] calldata priceUpdateData) external payable returns (int256 realizedPnl)",

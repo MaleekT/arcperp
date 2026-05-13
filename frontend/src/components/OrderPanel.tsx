@@ -147,16 +147,11 @@ export function OrderPanel({ pair, trader, prices }: Props) {
       });
 
       const m = parseFloat(marginInput);
-      const previewE8 = BigInt(Math.round((oraclePreview?.price ?? 0) * 1e8));
-      const slipBps = BigInt(Math.round(Math.max(0, parseFloat(slippageTolerance) || 0.5) * 100));
-      const minPriceBig = previewE8 > 0n ? (previewE8 * (10000n - slipBps)) / 10000n : 0n;
-      const maxPriceBig = previewE8 > 0n ? (previewE8 * (10000n + slipBps)) / 10000n : 0n;
 
       const posHash = await walletClient.writeContract({
         ...perpContract,
         functionName: "openPosition",
-        args: [pair.id, isLong, parseUnits(m.toFixed(6), 6), BigInt(leverage * 100), minPriceBig, maxPriceBig, vaa],
-        value: 0n,
+        args: [pair.id, isLong, parseUnits(m.toFixed(6), 6), BigInt(leverage * 100), vaa],
       });
 
       setTxHash(posHash);

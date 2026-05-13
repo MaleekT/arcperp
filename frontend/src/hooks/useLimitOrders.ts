@@ -172,11 +172,8 @@ export function useLimitOrders(
               order.isLong,
               parseUnits(order.marginUsdc.toFixed(6), 6),
               BigInt(order.leverage * 100),
-              0n, // minPrice — no bound, limit order validated its own trigger condition
-              0n, // maxPrice — no bound
               vaa,
             ],
-            value: 0n,
           });
 
           // Re-check active immediately before touching shared state
