@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     proxy: {
       "/ws": {
-        target: process.env.VITE_PRICE_SERVER_URL ?? "ws://localhost:8080",
+        target: process.env.VITE_PRICE_SERVER_URL ?? "ws://localhost:8081",
         ws: true,
       },
     },

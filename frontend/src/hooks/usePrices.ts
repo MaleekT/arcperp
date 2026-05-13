@@ -14,6 +14,8 @@ const WS_URL = (import.meta.env.VITE_PRICE_SERVER_URL as string | undefined) ?? 
 const HERMES_URL = "https://hermes.pyth.network";
 const RECONNECT_DELAY_MS = 3_000;
 const FALLBACK_POLL_MS = 2_000;
+// If WS is open but no price arrives within this window, restart the Hermes fallback.
+const STALE_PRICE_TIMEOUT_MS = 5_000;
 
 // Bare hex feed IDs (no 0x) for Hermes query params
 const PYTH_FEEDS: Record<string, string> = {
@@ -57,6 +59,9 @@ export function usePrices(): UsePricesResult {
   const wsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const connectedRef = useRef(false);
+  // Tracks the last time any price message arrived over the WS
+  const lastWsMsgRef = useRef<number>(0);
+  const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function applyUpdate(pair: string, price: string, priceRaw: string, timestamp: number) {
     const prev = prevRef.current[pair];
@@ -67,7 +72,7 @@ export function usePrices(): UsePricesResult {
   }
 
   async function pollHermes() {
-    if (connectedRef.current) return;
+    if (connectedRef.current && fallbackTimerRef.current === null) return;
     try {
       const ids = Object.values(PYTH_FEEDS).map((id) => `ids[]=${id}`).join("&");
       const res = await fetch(`${HERMES_URL}/v2/updates/price/latest?${ids}&parsed=true`);
@@ -96,6 +101,26 @@ export function usePrices(): UsePricesResult {
     }
   }
 
+  function clearStaleTimer() {
+    if (staleTimerRef.current) {
+      clearTimeout(staleTimerRef.current);
+      staleTimerRef.current = null;
+    }
+  }
+
+  // Arms the stale-price watchdog. If the WS doesn't deliver a message within
+  // STALE_PRICE_TIMEOUT_MS, we restart the Hermes fallback even though the WS
+  // connection is still open (handles the "connected but silent" Render failure mode).
+  function armStaleTimer() {
+    clearStaleTimer();
+    staleTimerRef.current = setTimeout(() => {
+      if (connectedRef.current) {
+        startFallback();
+        armStaleTimer(); // keep re-arming until messages resume
+      }
+    }, STALE_PRICE_TIMEOUT_MS);
+  }
+
   useEffect(() => {
     let unmounted = false;
 
@@ -110,10 +135,17 @@ export function usePrices(): UsePricesResult {
       ws.onopen = () => {
         connectedRef.current = true;
         setConnected(true);
+        lastWsMsgRef.current = Date.now();
         stopFallback();
+        armStaleTimer(); // start watching for silence
       };
 
       ws.onmessage = (event: MessageEvent<string>) => {
+        lastWsMsgRef.current = Date.now();
+        // If Hermes fallback was running due to stale timer, stop it now
+        stopFallback();
+        clearStaleTimer();
+        armStaleTimer(); // re-arm after each received message
         try {
           const msg = JSON.parse(event.data) as { pair: string; price: string; priceRaw: string; timestamp: number };
           applyUpdate(msg.pair, msg.price, msg.priceRaw, msg.timestamp);
@@ -123,6 +155,7 @@ export function usePrices(): UsePricesResult {
       ws.onclose = () => {
         connectedRef.current = false;
         setConnected(false);
+        clearStaleTimer();
         if (!unmounted) {
           startFallback();
           wsTimerRef.current = setTimeout(connect, RECONNECT_DELAY_MS);
@@ -137,6 +170,7 @@ export function usePrices(): UsePricesResult {
     return () => {
       unmounted = true;
       if (wsTimerRef.current) clearTimeout(wsTimerRef.current);
+      clearStaleTimer();
       stopFallback();
       wsRef.current?.close();
     };

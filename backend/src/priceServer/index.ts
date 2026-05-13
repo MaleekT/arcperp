@@ -6,6 +6,7 @@ import { PYTH_IDS } from "../lib/arc.js";
 // Render injects PORT automatically; fall back to PRICE_SERVER_PORT for local dev
 const PORT = parseInt(process.env.PORT ?? process.env.PRICE_SERVER_PORT ?? "8081", 10);
 const POLL_INTERVAL_MS = 1_000;
+const FETCH_TIMEOUT_MS = 8_000;
 const HERMES = process.env.PYTH_HERMES_URL ?? "https://hermes.pyth.network";
 
 // Build PAIRS from shared PYTH_IDS (strip 0x prefix — Hermes expects bare hex)
@@ -94,7 +95,17 @@ const idToPair: Record<string, string> = {};
 for (const [pair, id] of Object.entries(PAIRS)) idToPair[id.toLowerCase()] = pair;
 
 async function pollOnce(): Promise<void> {
-  const res = await fetch(url);
+  // AbortController gives us a hard timeout on the fetch
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   if (!res.ok) {
     console.error(`[priceServer] Hermes HTTP ${res.status}: ${await res.text()}`);
     return;
@@ -113,10 +124,27 @@ async function pollOnce(): Promise<void> {
   }
 }
 
+// Exponential backoff state
+let backoffMs = POLL_INTERVAL_MS;
+const MAX_BACKOFF_MS = 30_000;
+
 async function pollLoop(): Promise<void> {
   while (true) {
-    try { await pollOnce(); } catch (err) { console.error("[priceServer] Error:", (err as Error).message); }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    try {
+      await pollOnce();
+      backoffMs = POLL_INTERVAL_MS; // reset on success
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isNetwork = msg.includes("fetch failed") || msg.includes("aborted") || msg.includes("network");
+      console.error(`[priceServer] Error (backoff ${backoffMs}ms): ${msg}`);
+      await new Promise((r) => setTimeout(r, backoffMs));
+      if (isNetwork) {
+        backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
+      } else {
+        backoffMs = POLL_INTERVAL_MS;
+      }
+    }
   }
 }
 
