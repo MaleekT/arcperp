@@ -18,6 +18,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Check secret is configured
+        env:
+          KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::DEPLOYER_PRIVATE_KEY secret is not set."
+            echo "Add it at https://github.com/MaleekT/arcperp/settings/secrets/actions"
+            exit 1
+          fi
+          echo "Key present (${#KEY} chars)"
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -29,7 +40,6 @@ jobs:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          echo "Key length: ${#DEPLOYER_PRIVATE_KEY} chars"
           mkdir -p deployments
           forge script script/MigratePerpEngine.s.sol \
             --tc MigratePerpEngine \
@@ -38,11 +48,60 @@ jobs:
             --private-key "$DEPLOYER_PRIVATE_KEY" \
             -vvv
 
-      - name: Show deployed addresses
+      - name: Extract and display deployed addresses
         working-directory: contracts
         run: |
-          echo "=== broadcast run-latest.json ==="
-          cat broadcast/MigratePerpEngine.s.sol/5042002/run-latest.json || echo "broadcast file not found"
+          set -euo pipefail
+          BROADCAST="broadcast/MigratePerpEngine.s.sol/5042002/run-latest.json"
+
+          if [ ! -f "$BROADCAST" ]; then
+            echo "::error::Broadcast file not found: $BROADCAST"
+            exit 1
+          fi
+
+          PERP=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="PerpEngine") | .contractAddress' "$BROADCAST")
+          LIQ=$(jq -r  '.transactions[] | select(.transactionType=="CREATE" and .contractName=="LiquidationEngine") | .contractAddress' "$BROADCAST")
+          VAULT=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="VaultManager") | .contractAddress' "$BROADCAST")
+
+          FEEDS=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="UpdatableMockFeed") | .contractAddress' "$BROADCAST")
+          BTC_FEED=$(echo  "$FEEDS" | sed -n '1p')
+          ETH_FEED=$(echo  "$FEEDS" | sed -n '2p')
+          EURC_FEED=$(echo "$FEEDS" | sed -n '3p')
+
+          echo "## Deployed Addresses" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Contract | Address |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| PerpEngine | \`$PERP\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| LiquidationEngine | \`$LIQ\` |" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$VAULT" ] && echo "| VaultManager | \`$VAULT\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| UpdatableMockFeed (BTC) | \`$BTC_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| UpdatableMockFeed (ETH) | \`$ETH_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| UpdatableMockFeed (EURC) | \`$EURC_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Vercel Environment Variables" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "VITE_PERP_ENGINE_ADDRESS=$PERP" >> "$GITHUB_STEP_SUMMARY"
+          echo "VITE_LIQUIDATION_ENGINE_ADDRESS=$LIQ" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$VAULT" ] && echo "VITE_VAULT_MANAGER_ADDRESS=$VAULT" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Render / Backend Environment Variables" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "PERP_ENGINE_ADDRESS=$PERP" >> "$GITHUB_STEP_SUMMARY"
+          echo "LIQUIDATION_ENGINE_ADDRESS=$LIQ" >> "$GITHUB_STEP_SUMMARY"
+          echo "MOCK_BTC_FEED=$BTC_FEED" >> "$GITHUB_STEP_SUMMARY"
+          echo "MOCK_ETH_FEED=$ETH_FEED" >> "$GITHUB_STEP_SUMMARY"
+          echo "MOCK_EURC_FEED=$EURC_FEED" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "PerpEngine:         $PERP"
+          echo "LiquidationEngine:  $LIQ"
+          echo "BTC feed:           $BTC_FEED"
+          echo "ETH feed:           $ETH_FEED"
+          echo "EURC feed:          $EURC_FEED"
 
       - name: Upload broadcast
         if: always()

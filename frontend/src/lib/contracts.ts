@@ -34,24 +34,22 @@ export const arcTestnet = defineChain({
   },
 });
 
-const ZERO = "0x0000000000000000000000000000000000000000";
-
 export const ADDRESSES = {
-  usdc: requireAddress("VITE_USDC_ADDRESS", "0x3600000000000000000000000000000000000000"),
-  vault: requireAddress("VITE_VAULT_MANAGER_ADDRESS", ZERO),
-  perpEngine: requireAddress("VITE_PERP_ENGINE_ADDRESS", ZERO),
-  liqEngine: requireAddress("VITE_LIQUIDATION_ENGINE_ADDRESS", ZERO),
+  usdc:       requireAddress("VITE_USDC_ADDRESS",              "0x3600000000000000000000000000000000000000"),
+  vault:      requireAddress("VITE_VAULT_MANAGER_ADDRESS",     "0x5fa17b9d90c5bc74ec9ef42ca149fb9c5c096899"),
+  perpEngine: requireAddress("VITE_PERP_ENGINE_ADDRESS",       "0xdc07cbe108aae0b83356ccc5a8fdb1e728418d4f"),
+  liqEngine:  requireAddress("VITE_LIQUIDATION_ENGINE_ADDRESS","0xb2ff23167f9c965f6d7060324f348c77ed3e4b2c"),
 } as const;
 
 export const PAIR_IDS = {
-  BTC_USDC: keccak256(toBytes("BTC-USDC")) as `0x${string}`,
-  ETH_USDC: keccak256(toBytes("ETH-USDC")) as `0x${string}`,
+  BTC_USDC:  keccak256(toBytes("BTC-USDC"))  as `0x${string}`,
+  ETH_USDC:  keccak256(toBytes("ETH-USDC"))  as `0x${string}`,
   EURC_USDC: keccak256(toBytes("EURC-USDC")) as `0x${string}`,
 } as const;
 
 export const PAIRS = [
-  { id: PAIR_IDS.BTC_USDC, label: "BTC-USDC", symbol: "BTC" },
-  { id: PAIR_IDS.ETH_USDC, label: "ETH-USDC", symbol: "ETH" },
+  { id: PAIR_IDS.BTC_USDC,  label: "BTC-USDC",  symbol: "BTC"  },
+  { id: PAIR_IDS.ETH_USDC,  label: "ETH-USDC",  symbol: "ETH"  },
   { id: PAIR_IDS.EURC_USDC, label: "EURC-USDC", symbol: "EURC" },
 ] as const;
 
@@ -59,7 +57,7 @@ export function createClient() {
   return createPublicClient({ chain: arcTestnet, transport: http() });
 }
 
-export const vaultContract = { address: ADDRESSES.vault, abi: VAULT_ABI } as const;
-export const perpContract = { address: ADDRESSES.perpEngine, abi: PERP_ENGINE_ABI } as const;
-export const liqContract = { address: ADDRESSES.liqEngine, abi: LIQ_ENGINE_ABI } as const;
-export const usdcContract = { address: ADDRESSES.usdc, abi: ERC20_ABI } as const;
+export const vaultContract  = { address: ADDRESSES.vault,      abi: VAULT_ABI       } as const;
+export const perpContract   = { address: ADDRESSES.perpEngine, abi: PERP_ENGINE_ABI  } as const;
+export const liqContract    = { address: ADDRESSES.liqEngine,  abi: LIQ_ENGINE_ABI   } as const;
+export const usdcContract   = { address: ADDRESSES.usdc,       abi: ERC20_ABI        } as const;
