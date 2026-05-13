@@ -1,0 +1,50 @@
+name: Deploy Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type YES to confirm deployment'
+        required: true
+        default: 'NO'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm == 'YES' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run migration
+        working-directory: contracts
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+        run: |
+          mkdir -p deployments
+          forge script script/MigratePerpEngine.s.sol \
+            --tc MigratePerpEngine \
+            --rpc-url https://rpc.testnet.arc.network \
+            --broadcast \
+            --private-key $DEPLOYER_PRIVATE_KEY \
+            -vvv 2>&1 | tee migration_output.txt
+
+      - name: Print new addresses
+        working-directory: contracts
+        run: |
+          echo "======== NEW CONTRACT ADDRESSES ========"
+          cat deployments/arc_testnet.json
+          echo "========================================"
+
+      - name: Upload deployment JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-json
+          path: contracts/deployments/arc_testnet.json
