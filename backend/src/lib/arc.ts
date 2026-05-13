@@ -38,7 +38,7 @@ export const PAIRS = {
 export const PYTH_IDS = {
   BTC: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43" as `0x${string}`,
   ETH: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace" as `0x${string}`,
-  EURC: "0x76fa85158bf14ede77087fe3ae472f66213f6ea2ceb0e6d71d3424ef6fb5bbfb" as `0x${string}`,
+  EURC: "0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b" as `0x${string}`,
 } as const;
 
 // ── Clients ───────────────────────────────────────────────────────────────────
