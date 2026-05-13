@@ -29,7 +29,6 @@ jobs:
         run: |
           if [ -z "$KEY" ]; then
             echo "::error::DEPLOYER_PRIVATE_KEY secret is not set."
-            echo "Add it at https://github.com/MaleekT/arcperp/settings/secrets/actions"
             exit 1
           fi
           echo "Key present (${#KEY} chars)"
@@ -39,70 +38,56 @@ jobs:
         with:
           version: stable
 
-      - name: Run migration
+      - name: Deploy fresh oracle feeds
         working-directory: contracts
         env:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           mkdir -p deployments
-          forge script script/MigratePerpEngine.s.sol \
-            --tc MigratePerpEngine \
-            --rpc-url https://rpc.testnet.arc.network \
+          forge script script/UpdateFeeds.s.sol \
+            --tc UpdateFeeds \
+            --rpc-url https://rpc.quicknode.testnet.arc.network \
             --broadcast \
             --private-key "$DEPLOYER_PRIVATE_KEY" \
             -vvv 2>&1
 
-      - name: Extract and display deployed addresses
+      - name: Extract and display deployed feed addresses
         working-directory: contracts
         run: |
           set -euo pipefail
-          BROADCAST="broadcast/MigratePerpEngine.s.sol/5042002/run-latest.json"
+          BROADCAST="broadcast/UpdateFeeds.s.sol/5042002/run-latest.json"
 
           if [ ! -f "$BROADCAST" ]; then
             echo "::error::Broadcast file not found — forge did not broadcast"
             exit 1
           fi
 
-          PERP=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="PerpEngine") | .contractAddress' "$BROADCAST")
-          LIQ=$(jq -r  '.transactions[] | select(.transactionType=="CREATE" and .contractName=="LiquidationEngine") | .contractAddress' "$BROADCAST")
-          VAULT=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="VaultManager") | .contractAddress' "$BROADCAST" || echo "")
-
           FEEDS=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="UpdatableMockFeed") | .contractAddress' "$BROADCAST")
           BTC_FEED=$(echo  "$FEEDS" | sed -n '1p')
           ETH_FEED=$(echo  "$FEEDS" | sed -n '2p')
           EURC_FEED=$(echo "$FEEDS" | sed -n '3p')
 
-          echo "## Deployed Addresses" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Oracle Feeds Deployed" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Contract | Address |" >> "$GITHUB_STEP_SUMMARY"
+          echo "PerpEngine at \`0xdC07CBe108AaE0b83356CCc5a8FDB1e728418D4F\` now points to fresh feeds." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Feed | Address |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| PerpEngine | \`$PERP\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| LiquidationEngine | \`$LIQ\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| UpdatableMockFeed (BTC) | \`$BTC_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| UpdatableMockFeed (ETH) | \`$ETH_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| UpdatableMockFeed (EURC) | \`$EURC_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "## Vercel env vars" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Set these on Render (oracle-updater service)" >> "$GITHUB_STEP_SUMMARY"
           echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "VITE_PERP_ENGINE_ADDRESS=$PERP" >> "$GITHUB_STEP_SUMMARY"
-          echo "VITE_LIQUIDATION_ENGINE_ADDRESS=$LIQ" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "## Render / Backend env vars" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "PERP_ENGINE_ADDRESS=$PERP" >> "$GITHUB_STEP_SUMMARY"
-          echo "LIQUIDATION_ENGINE_ADDRESS=$LIQ" >> "$GITHUB_STEP_SUMMARY"
           echo "MOCK_BTC_FEED=$BTC_FEED" >> "$GITHUB_STEP_SUMMARY"
           echo "MOCK_ETH_FEED=$ETH_FEED" >> "$GITHUB_STEP_SUMMARY"
           echo "MOCK_EURC_FEED=$EURC_FEED" >> "$GITHUB_STEP_SUMMARY"
           echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
 
-          echo "PerpEngine:        $PERP"
-          echo "LiquidationEngine: $LIQ"
-          echo "BTC feed:          $BTC_FEED"
-          echo "ETH feed:          $ETH_FEED"
-          echo "EURC feed:         $EURC_FEED"
+          echo "BTC feed:  $BTC_FEED"
+          echo "ETH feed:  $ETH_FEED"
+          echo "EURC feed: $EURC_FEED"
 
       - name: Upload broadcast
         if: always()
