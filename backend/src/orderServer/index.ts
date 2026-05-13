@@ -25,7 +25,8 @@ import { conditionMet } from "./conditions.js";
 
 validateEnv(["ARC_RPC_URL", "BOT_PRIVATE_KEY", "PERP_ENGINE_ADDRESS", "PRICE_SERVER_WS_URL"]);
 
-const PORT = parseInt(process.env.ORDER_SERVER_PORT ?? "8082", 10);
+// Render injects PORT automatically; fall back to ORDER_SERVER_PORT for local dev
+const PORT = parseInt(process.env.PORT ?? process.env.ORDER_SERVER_PORT ?? "8082", 10);
 const PRICE_SERVER_WS = process.env.PRICE_SERVER_WS_URL!;
 const SCAN_INTERVAL_MS = 5_000;
 const HERMES_URL = process.env.PYTH_HERMES_URL ?? "https://hermes.pyth.network";
