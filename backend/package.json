@@ -6,7 +6,10 @@
   "scripts": {
     "liquidator": "tsx src/liquidator/index.ts",
     "keeper": "tsx src/keeper/index.ts",
+    "oracle-updater": "tsx src/oracleUpdater/index.ts",
     "price-server": "tsx src/priceServer/index.ts",
+    "order-server": "tsx src/orderServer/index.ts",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -24,6 +27,8 @@
     "@types/node-cron": "^3.0.0",
     "@types/ws": "^8.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "@vitest/coverage-v8": "^1.0.0"
   }
 }

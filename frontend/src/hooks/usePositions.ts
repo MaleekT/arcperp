@@ -237,5 +237,43 @@ export interface ProtocolStats {
 }
 
 export function useProtocolStats(): { stats: ProtocolStats | null; loading: boolean } {
-  return { stats: null, loading: false };
+  const [stats, setStats] = useState<ProtocolStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const insuranceFundRaw = await client.readContract({
+          address: ADDRESSES.vault,
+          abi: [{ type: "function", name: "getInsuranceFund", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" }] as const,
+          functionName: "getInsuranceFund",
+          args: [],
+        });
+
+        if (!cancelled) {
+          setStats((prev) => ({
+            totalVolumeUsdc: prev?.totalVolumeUsdc ?? "0",
+            totalFeesUsdc: prev?.totalFeesUsdc ?? "0",
+            totalLiquidations: prev?.totalLiquidations ?? 0,
+            openInterestLong: prev?.openInterestLong ?? "0",
+            openInterestShort: prev?.openInterestShort ?? "0",
+            insuranceFund: String(insuranceFundRaw),
+            lastUpdated: Math.floor(Date.now() / 1000),
+          }));
+        }
+      } catch {
+        // RPC may not be reachable in dev — leave stats null
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    const id = setInterval(() => void load(), 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  return { stats, loading };
 }

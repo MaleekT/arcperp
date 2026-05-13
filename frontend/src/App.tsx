@@ -6,6 +6,7 @@ import { WalletButton } from "./components/WalletButton.js";
 import { TradingChart } from "./components/TradingChart.js";
 import { OrderPanel } from "./components/OrderPanel.js";
 import { PositionsPanel } from "./components/PositionsPanel.js";
+import { HistoryPanel } from "./components/HistoryPanel.js";
 import { MarginPanel } from "./components/MarginPanel.js";
 import { AnalyticsDashboard } from "./components/AnalyticsDashboard.js";
 import { usePrices } from "./hooks/usePrices.js";
@@ -28,14 +29,29 @@ function AppShell() {
   const { address } = useWallet();
   const [activePair, setActivePair] = useState<typeof PAIRS[number]>(PAIRS[0]);
   const [activeView, setActiveView] = useState<ActiveView>("trade");
-  const prices = usePrices();
+  const { prices, connected } = usePrices();
 
   return (
     <div style={styles.root}>
       {/* ── Top navigation ── */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <span style={styles.logo}>ARC<span style={styles.logoAccent}>PERP</span></span>
+          <span style={styles.logo}>
+            ARC<span style={styles.logoAccent}>PERP</span>
+            <span
+              title={connected ? "Price feed connected" : "Price feed disconnected — reconnecting…"}
+              style={{
+                display: "inline-block",
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: connected ? "var(--green)" : "var(--red)",
+                marginLeft: 6,
+                verticalAlign: "middle",
+                boxShadow: connected ? "0 0 4px var(--green)" : "none",
+              }}
+            />
+          </span>
           <nav style={styles.pairNav}>
             {PAIRS.map((pair) => {
               const price = prices[pair.label];
@@ -83,6 +99,7 @@ function AppShell() {
           <div style={styles.chartArea}>
             <TradingChart pair={activePair} prices={prices} />
             <PositionsPanel trader={address} prices={prices} />
+            <HistoryPanel trader={address} />
           </div>
 
           <div style={styles.sidebar}>
