@@ -7,11 +7,16 @@ on:
         description: 'Type YES to confirm deployment'
         required: true
         default: 'NO'
+  push:
+    branches:
+      - run-migration
 
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.confirm == 'YES' }}
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/run-migration') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
 
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +51,7 @@ jobs:
             --rpc-url https://rpc.testnet.arc.network \
             --broadcast \
             --private-key "$DEPLOYER_PRIVATE_KEY" \
-            -vvv
+            -vvv 2>&1
 
       - name: Extract and display deployed addresses
         working-directory: contracts
@@ -55,13 +60,13 @@ jobs:
           BROADCAST="broadcast/MigratePerpEngine.s.sol/5042002/run-latest.json"
 
           if [ ! -f "$BROADCAST" ]; then
-            echo "::error::Broadcast file not found: $BROADCAST"
+            echo "::error::Broadcast file not found — forge did not broadcast"
             exit 1
           fi
 
           PERP=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="PerpEngine") | .contractAddress' "$BROADCAST")
           LIQ=$(jq -r  '.transactions[] | select(.transactionType=="CREATE" and .contractName=="LiquidationEngine") | .contractAddress' "$BROADCAST")
-          VAULT=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="VaultManager") | .contractAddress' "$BROADCAST")
+          VAULT=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="VaultManager") | .contractAddress' "$BROADCAST" || echo "")
 
           FEEDS=$(jq -r '.transactions[] | select(.transactionType=="CREATE" and .contractName=="UpdatableMockFeed") | .contractAddress' "$BROADCAST")
           BTC_FEED=$(echo  "$FEEDS" | sed -n '1p')
@@ -74,21 +79,17 @@ jobs:
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| PerpEngine | \`$PERP\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| LiquidationEngine | \`$LIQ\` |" >> "$GITHUB_STEP_SUMMARY"
-          [ -n "$VAULT" ] && echo "| VaultManager | \`$VAULT\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| UpdatableMockFeed (BTC) | \`$BTC_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| UpdatableMockFeed (ETH) | \`$ETH_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| UpdatableMockFeed (EURC) | \`$EURC_FEED\` |" >> "$GITHUB_STEP_SUMMARY"
-
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "## Vercel Environment Variables" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Vercel env vars" >> "$GITHUB_STEP_SUMMARY"
           echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
           echo "VITE_PERP_ENGINE_ADDRESS=$PERP" >> "$GITHUB_STEP_SUMMARY"
           echo "VITE_LIQUIDATION_ENGINE_ADDRESS=$LIQ" >> "$GITHUB_STEP_SUMMARY"
-          [ -n "$VAULT" ] && echo "VITE_VAULT_MANAGER_ADDRESS=$VAULT" >> "$GITHUB_STEP_SUMMARY"
           echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
-
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "## Render / Backend Environment Variables" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Render / Backend env vars" >> "$GITHUB_STEP_SUMMARY"
           echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
           echo "PERP_ENGINE_ADDRESS=$PERP" >> "$GITHUB_STEP_SUMMARY"
           echo "LIQUIDATION_ENGINE_ADDRESS=$LIQ" >> "$GITHUB_STEP_SUMMARY"
@@ -97,11 +98,11 @@ jobs:
           echo "MOCK_EURC_FEED=$EURC_FEED" >> "$GITHUB_STEP_SUMMARY"
           echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
 
-          echo "PerpEngine:         $PERP"
-          echo "LiquidationEngine:  $LIQ"
-          echo "BTC feed:           $BTC_FEED"
-          echo "ETH feed:           $ETH_FEED"
-          echo "EURC feed:          $EURC_FEED"
+          echo "PerpEngine:        $PERP"
+          echo "LiquidationEngine: $LIQ"
+          echo "BTC feed:          $BTC_FEED"
+          echo "ETH feed:          $ETH_FEED"
+          echo "EURC feed:         $EURC_FEED"
 
       - name: Upload broadcast
         if: always()
