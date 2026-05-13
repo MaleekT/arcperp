@@ -18,6 +18,7 @@ import {
   createArcWsClient,
   createArcWalletClient,
   CONTRACTS,
+  PAIRS,
   PYTH_IDS,
   withRetry,
   validateEnv,
@@ -25,6 +26,7 @@ import {
 
 validateEnv([
   "ARC_RPC_URL",
+  "ARC_WS_URL",
   "BOT_PRIVATE_KEY",
   "PERP_ENGINE_ADDRESS",
   "LIQUIDATION_ENGINE_ADDRESS",
@@ -34,8 +36,8 @@ validateEnv([
 // ── ABIs (minimal — only what this bot needs) ─────────────────────────────────
 
 const PERP_ENGINE_ABI = parseAbi([
-  "event PositionOpened(bytes32 indexed positionId, address indexed trader, bytes32 indexed pair, uint256 notional, uint256 margin, uint256 entryPrice, bool isLong)",
-  "event PositionClosed(bytes32 indexed positionId, address indexed trader, int256 pnl)",
+  "event PositionOpened(bytes32 indexed positionId, address indexed trader, bytes32 indexed pair, uint256 notional, uint256 entryPrice, bool isLong, uint256 leverageBps)",
+  "event PositionClosed(bytes32 indexed positionId, address indexed trader, int256 realizedPnl, uint256 finalAmount)",
   "function getPosition(bytes32 positionId) view returns (address trader, bytes32 pair, uint128 notional, uint128 margin, uint128 entryPrice, uint64 openedAtBlock, bool isLong)",
 ]);
 
@@ -73,14 +75,14 @@ async function replayHistory(): Promise<void> {
 
     const openedLogs = await publicClient.getLogs({
       address: CONTRACTS.perpEngine,
-      event: parseAbi(["event PositionOpened(bytes32 indexed positionId, address indexed trader, bytes32 indexed pair, uint256 notional, uint256 margin, uint256 entryPrice, bool isLong)"])[0],
+      event: parseAbi(["event PositionOpened(bytes32 indexed positionId, address indexed trader, bytes32 indexed pair, uint256 notional, uint256 entryPrice, bool isLong, uint256 leverageBps)"])[0],
       fromBlock: from,
       toBlock: to,
     });
 
     const closedLogs = await publicClient.getLogs({
       address: CONTRACTS.perpEngine,
-      event: parseAbi(["event PositionClosed(bytes32 indexed positionId, address indexed trader, int256 pnl)"])[0],
+      event: parseAbi(["event PositionClosed(bytes32 indexed positionId, address indexed trader, int256 realizedPnl, uint256 finalAmount)"])[0],
       fromBlock: from,
       toBlock: to,
     });
@@ -177,14 +179,41 @@ async function scanAndLiquidate(): Promise<void> {
 
   const positionIds = Array.from(openPositions);
 
-  // Batch isLiquidatable checks using multicall
-  const checks = await publicClient.multicall({
+  // Step 1: fetch position data to determine the pair for each positionId
+  const positionData = await publicClient.multicall({
     contracts: positionIds.map((posId) => ({
-      address: CONTRACTS.liquidationEngine,
-      abi: LIQ_ENGINE_ABI,
-      functionName: "isLiquidatable" as const,
-      args: [posId, prices.BTC] as const, // approximate — liquidation engine verifies oracle
+      address: CONTRACTS.perpEngine,
+      abi: PERP_ENGINE_ABI,
+      functionName: "getPosition" as const,
+      args: [posId] as const,
     })),
+    allowFailure: true,
+  });
+
+  // Map pair ID → mark price
+  const pairToPrice = new Map<string, bigint>([
+    [PAIRS.BTC_USDC, prices.BTC],
+    [PAIRS.ETH_USDC, prices.ETH],
+    [PAIRS.EURC_USDC, prices.EURC],
+  ]);
+
+  // Step 2: isLiquidatable checks using the correct mark price per pair
+  const checks = await publicClient.multicall({
+    contracts: positionIds.map((posId, i) => {
+      const res = positionData[i];
+      let price = prices.BTC; // fallback for unknown pairs
+      if (res?.status === "success") {
+        const pos = res.result as { pair: `0x${string}` } | readonly unknown[];
+        const pair = (Array.isArray(pos) ? (pos as readonly unknown[])[1] : (pos as { pair: `0x${string}` }).pair) as string;
+        price = pairToPrice.get(pair) ?? prices.BTC;
+      }
+      return {
+        address: CONTRACTS.liquidationEngine,
+        abi: LIQ_ENGINE_ABI,
+        functionName: "isLiquidatable" as const,
+        args: [posId, price] as const,
+      };
+    }),
     allowFailure: true,
   });
 
@@ -199,6 +228,8 @@ async function scanAndLiquidate(): Promise<void> {
       if (liquidatable) toLiquidate.push(posId);
     }
   }
+
+  console.log(`[liquidator] Scanned ${positionIds.length} position(s) — ${toLiquidate.length} liquidatable`);
 
   if (toLiquidate.length === 0) return;
 

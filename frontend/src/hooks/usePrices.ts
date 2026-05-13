@@ -10,11 +10,17 @@ export interface PriceData {
 
 type PriceMap = Record<string, PriceData>;
 
-const WS_URL = import.meta.env.VITE_PRICE_SERVER_URL ?? "ws://localhost:8080";
+const WS_URL = import.meta.env.VITE_PRICE_SERVER_URL ?? "ws://localhost:8081";
 const RECONNECT_DELAY_MS = 3_000;
 
-export function usePrices(): PriceMap {
+export interface UsePricesResult {
+  prices: PriceMap;
+  connected: boolean;
+}
+
+export function usePrices(): UsePricesResult {
   const [prices, setPrices] = useState<PriceMap>({});
+  const [connected, setConnected] = useState(false);
   const prevRef = useRef<Record<string, string>>({});
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -27,6 +33,8 @@ export function usePrices(): PriceMap {
 
       const ws = new WebSocket(WS_URL);
       wsRef.current = ws;
+
+      ws.onopen = () => setConnected(true);
 
       ws.onmessage = (event: MessageEvent<string>) => {
         try {
@@ -46,6 +54,7 @@ export function usePrices(): PriceMap {
       };
 
       ws.onclose = () => {
+        setConnected(false);
         if (!unmounted) {
           timerRef.current = setTimeout(connect, RECONNECT_DELAY_MS);
         }
@@ -63,5 +72,5 @@ export function usePrices(): PriceMap {
     };
   }, []);
 
-  return prices;
+  return { prices, connected };
 }

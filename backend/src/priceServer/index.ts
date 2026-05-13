@@ -1,16 +1,18 @@
 import "dotenv/config";
+import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import { PYTH_IDS } from "../lib/arc.js";
 
 // Render injects PORT automatically; fall back to PRICE_SERVER_PORT for local dev
 const PORT = parseInt(process.env.PORT ?? process.env.PRICE_SERVER_PORT ?? "8081", 10);
 const POLL_INTERVAL_MS = 1_000;
-const HERMES = "https://hermes.pyth.network";
+const HERMES = process.env.PYTH_HERMES_URL ?? "https://hermes.pyth.network";
 
-// EUR/USD used as EURC/USD proxy (EURC is a EUR-pegged stablecoin)
+// Build PAIRS from shared PYTH_IDS (strip 0x prefix — Hermes expects bare hex)
 const PAIRS: Record<string, string> = {
-  "BTC-USDC": "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
-  "ETH-USDC": "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
-  "EURC-USDC": "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b",
+  "BTC-USDC": PYTH_IDS.BTC.slice(2),
+  "ETH-USDC": PYTH_IDS.ETH.slice(2),
+  "EURC-USDC": PYTH_IDS.EURC.slice(2),
 };
 
 interface PriceMessage {
@@ -30,9 +32,19 @@ interface HermesResponse {
   parsed: HermesParsedPrice[];
 }
 
-// ── WebSocket server ──────────────────────────────────────────────────────────
+// ── HTTP server with /health + WebSocket upgrade ──────────────────────────────
 
-const wss = new WebSocketServer({ port: PORT });
+const httpServer = createServer((req, res) => {
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok", clients: wss.clients.size, timestamp: Date.now() }));
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+
+const wss = new WebSocketServer({ server: httpServer });
 const clients = new Set<WebSocket>();
 
 wss.on("connection", (ws) => {
@@ -40,6 +52,10 @@ wss.on("connection", (ws) => {
   console.log(`[priceServer] Client connected (total: ${clients.size})`);
   ws.on("close", () => { clients.delete(ws); });
   ws.on("error", () => clients.delete(ws));
+});
+
+httpServer.listen(PORT, () => {
+  console.log(`[priceServer] Listening on :${PORT}`);
 });
 
 function broadcast(msg: PriceMessage): void {
@@ -104,5 +120,4 @@ async function pollLoop(): Promise<void> {
   }
 }
 
-console.log(`[priceServer] Listening on ws://localhost:${PORT}`);
 pollLoop().catch((err) => { console.error("[priceServer] Fatal:", err); process.exit(1); });
