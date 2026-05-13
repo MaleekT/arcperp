@@ -9,7 +9,7 @@ import { PositionsPanel } from "./components/PositionsPanel.js";
 import { HistoryPanel } from "./components/HistoryPanel.js";
 import { MarginPanel } from "./components/MarginPanel.js";
 import { AnalyticsDashboard } from "./components/AnalyticsDashboard.js";
-import { usePrices } from "./hooks/usePrices.js";
+import { usePrices, PRICE_WS_URL } from "./hooks/usePrices.js";
 import "./styles/globals.css";
 
 // ── Provider setup ────────────────────────────────────────────────────────────
@@ -53,8 +53,8 @@ function AppShell() {
             />
           </span>
           {!connected && (
-            <span style={{ fontSize: 10, color: "var(--red)", letterSpacing: "0.02em" }}>
-              FEED OFFLINE — reconnecting…
+            <span style={{ fontSize: 10, color: "var(--red)", letterSpacing: "0.02em" }} title={`Trying: ${PRICE_WS_URL}`}>
+              FEED OFFLINE ({PRICE_WS_URL.replace("wss://", "").replace("ws://", "").split("/")[0]}) — reconnecting…
             </span>
           )}
           <nav style={styles.pairNav}>

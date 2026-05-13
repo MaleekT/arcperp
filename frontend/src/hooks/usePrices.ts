@@ -13,6 +13,8 @@ type PriceMap = Record<string, PriceData>;
 const WS_URL = import.meta.env.VITE_PRICE_SERVER_URL ?? "ws://localhost:8081";
 const RECONNECT_DELAY_MS = 3_000;
 
+export const PRICE_WS_URL = WS_URL;
+
 export interface UsePricesResult {
   prices: PriceMap;
   connected: boolean;
