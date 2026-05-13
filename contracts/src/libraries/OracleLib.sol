@@ -92,7 +92,10 @@ library OracleLib {
         bool pythAvailable;
         uint256 pythPrice;
 
-        uint256 updateFee = IPyth(pyth).getUpdateFee(priceUpdateData);
+        uint256 updateFee = 0;
+        try IPyth(pyth).getUpdateFee(priceUpdateData) returns (uint256 fee) {
+            updateFee = fee;
+        } catch {}
         try IPyth(pyth).updatePriceFeeds{value: updateFee}(priceUpdateData) {
             // Step 2: attempt price read (getPrice reverts if stale in some Pyth versions)
             try IPyth(pyth).getPriceNoOlderThan(pythPriceId, STALENESS_THRESHOLD) returns (

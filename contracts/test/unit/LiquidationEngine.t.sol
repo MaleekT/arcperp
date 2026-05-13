@@ -80,7 +80,7 @@ contract LiquidationEngineTest is Test {
 
     function _openAndAdvance() internal returns (bytes32 posId) {
         vm.prank(trader);
-        posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_25X, emptyVaa);
+        posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_25X, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
     }
 

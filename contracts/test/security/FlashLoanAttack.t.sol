@@ -27,7 +27,7 @@ contract FlashLoanAttacker {
     bytes32 public lastPosId;
 
     constructor(address _engine, address _vault, address _usdc, bytes32 _pair) {
-        engine = PerpEngine(_engine);
+        engine = PerpEngine(payable(_engine));
         vault = VaultManager(_vault);
         usdc = MockUSDC(_usdc);
         pair = _pair;
@@ -39,7 +39,7 @@ contract FlashLoanAttacker {
         usdc.approve(address(vault), type(uint256).max);
         vault.deposit(borrowedAmount);
 
-        lastPosId = engine.openPosition(pair, true, borrowedAmount / 2, 1_000, emptyVaa);
+        lastPosId = engine.openPosition(pair, true, borrowedAmount / 2, 1_000, 0, 0, emptyVaa);
 
         // Attempt to close in same block — this is the exploit vector
         try engine.closePosition(lastPosId, emptyVaa) {
@@ -56,7 +56,7 @@ contract FlashLoanAttacker {
         vault.deposit(amount);
 
         // Open at current legitimate price
-        engine.openPosition(pair, true, amount / 2, 1_000, emptyVaa);
+        engine.openPosition(pair, true, amount / 2, 1_000, 0, 0, emptyVaa);
         // Cannot manipulate Pyth VAA — it's cryptographically signed by 15+ validators
         // Any attempt to supply a fake price via VAA will fail signature verification
         // (In test environment, MockPyth accepts whatever is set via setPrice,
@@ -122,7 +122,7 @@ contract FlashLoanAttackTest is Test {
         usdc.approve(address(vault), type(uint256).max);
         vault.deposit(1_000_000e6);
 
-        bytes32 posId = engine.openPosition(BTC_USDC, true, 100_000e6, 1_000, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, 100_000e6, 1_000, 0, 0, emptyVaa);
 
         // Do NOT advance block — try to close in same block
         vm.expectRevert(abi.encodeWithSelector(IPerpEngine.SameBlockOpenClose.selector, posId));
@@ -162,7 +162,7 @@ contract FlashLoanAttackTest is Test {
         vault.deposit(1_000_000e6);
 
         // Open long
-        bytes32 posId = engine.openPosition(BTC_USDC, true, 100_000e6, 1_000, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, 100_000e6, 1_000, 0, 0, emptyVaa);
 
         // Price jumps 10% (attacker "manipulates" within same block)
         // (In production this can't happen via Pyth VAA, but even if it did:)
@@ -185,11 +185,11 @@ contract FlashLoanAttackTest is Test {
         usdc.approve(address(vault), type(uint256).max);
         vault.deposit(1_000_000e6);
 
-        engine.openPosition(BTC_USDC, true, 100_000e6, 1_000, emptyVaa);
+        engine.openPosition(BTC_USDC, true, 100_000e6, 1_000, 0, 0, emptyVaa);
 
         // Second open in same pair (same block) must revert
         vm.expectRevert(abi.encodeWithSelector(IPerpEngine.PositionAlreadyExists.selector, attacker, BTC_USDC));
-        engine.openPosition(BTC_USDC, false, 100_000e6, 1_000, emptyVaa);
+        engine.openPosition(BTC_USDC, false, 100_000e6, 1_000, 0, 0, emptyVaa);
         vm.stopPrank();
     }
 
@@ -205,7 +205,7 @@ contract FlashLoanAttackTest is Test {
         vault.deposit(100_000e6);
 
         vm.prank(user);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, 10_000e6, 1_000, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, 10_000e6, 1_000, 0, 0, emptyVaa);
 
         // Advance exactly one block
         vm.roll(block.number + 1);

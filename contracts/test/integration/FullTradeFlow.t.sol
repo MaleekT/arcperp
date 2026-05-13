@@ -85,7 +85,7 @@ contract FullTradeFlowTest is Test {
 
         // Open 10x long
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
 
         // Price rises 10%
@@ -118,7 +118,7 @@ contract FullTradeFlowTest is Test {
     function test_fullFlow_25x_liquidatedAfterPriceDrop() public {
         // Open 25x long — with 2.5% maintenance margin, health = 1 at ~4% drop
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_25X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_25X, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
 
         // Drop 4% — health < 1.0 (liquidatable)
@@ -145,7 +145,7 @@ contract FullTradeFlowTest is Test {
 
     function test_fullFlow_sameBlockOpenCloseReverts() public {
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
 
         // Do NOT advance block — attempt same-block close
         vm.prank(trader);
@@ -160,14 +160,14 @@ contract FullTradeFlowTest is Test {
 
         // Trader 1: 10x long BTC — opened at startBlock
         vm.prank(trader);
-        bytes32 longId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 longId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
 
         // Advance so shortId gets a different block-based position ID
         vm.roll(startBlock + 1);
 
         // Trader 2: 10x short BTC — opened at startBlock + 1
         vm.prank(trader2);
-        bytes32 shortId = engine.openPosition(BTC_USDC, false, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 shortId = engine.openPosition(BTC_USDC, false, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
 
         // Price moves up 5%
         int256 newPrice = BTC_PRICE * 105 / 100;
@@ -211,7 +211,7 @@ contract FullTradeFlowTest is Test {
         uint256 insuranceBefore = vault.getInsuranceFund();
 
         vm.prank(trader);
-        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
 
         uint256 insuranceAfter = vault.getInsuranceFund();
         assertGt(insuranceAfter, insuranceBefore, "Insurance fund grows with each trade fee");
@@ -221,7 +221,7 @@ contract FullTradeFlowTest is Test {
 
     function test_fullFlow_partialLiquidation() public {
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_25X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_25X, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
 
         // Drop 2% — health between 0.5 and 1.0 → partial (50%) liquidation
@@ -249,7 +249,7 @@ contract FullTradeFlowTest is Test {
     function test_fullFlow_adminWithdrawsInsuranceFund() public {
         // Generate some fees to populate insurance fund
         vm.prank(trader);
-        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
 
         uint256 insurance = vault.getInsuranceFund();
         assertGt(insurance, 0, "Insurance fund should have funds after a trade");

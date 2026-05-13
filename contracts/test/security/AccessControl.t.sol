@@ -170,7 +170,7 @@ contract AccessControlTest is Test {
         vault.deposit(100_000e6);
 
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, 1_000e6, 1_000, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, 1_000e6, 1_000, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
 
         vm.prank(hacker);
@@ -189,7 +189,7 @@ contract AccessControlTest is Test {
         vault.deposit(100_000e6);
 
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, 1_000e6, 2500, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, 1_000e6, 2500, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
 
         int256 crashPrice = BTC_PRICE * 97 / 100;
@@ -221,7 +221,7 @@ contract AccessControlTest is Test {
         vm.prank(trader);
         vault.deposit(100_000e6);
         vm.prank(trader);
-        engine.openPosition(BTC_USDC, true, 1_000e6, 1_000, emptyVaa);
+        engine.openPosition(BTC_USDC, true, 1_000e6, 1_000, 0, 0, emptyVaa);
 
         uint256 ins = vault.getInsuranceFund();
         if (ins > 0) {

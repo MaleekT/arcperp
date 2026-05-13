@@ -84,7 +84,7 @@ contract OracleManipulationTest is Test {
 
         // Should succeed using Chainlink fallback
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
         assertNe(posId, bytes32(0), "Position opened using Chainlink fallback");
     }
 
@@ -98,7 +98,7 @@ contract OracleManipulationTest is Test {
 
         vm.prank(trader);
         vm.expectRevert(OracleLib.BothOraclesUnavailable.selector);
-        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
     }
 
     // ── Fresh Pyth, stale Chainlink — uses Pyth only ──────────────────────────
@@ -111,7 +111,7 @@ contract OracleManipulationTest is Test {
 
         // Should succeed using Pyth only
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
         assertNe(posId, bytes32(0), "Position opened using Pyth when Chainlink is stale");
     }
 
@@ -132,7 +132,7 @@ contract OracleManipulationTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(OracleLib.OraclePriceDeviation.selector, pythPrice, chainlinkPrice, deviationBps)
         );
-        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
     }
 
     // ── Exactly 10% deviation — should succeed (boundary) ────────────────────
@@ -147,7 +147,7 @@ contract OracleManipulationTest is Test {
         // deviationBps = (67000 - 60300) / 67000 * 10000 = 6700/67000 * 10000 = 1000 bps
         // 1000 > 1000 is false, so no revert
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
         assertNe(posId, bytes32(0));
     }
 
@@ -156,7 +156,7 @@ contract OracleManipulationTest is Test {
     function test_oracle_stalePricePreventsLiquidation() public {
         // Open healthy position
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
 
         // Make BOTH oracles stale — liquidation must be blocked
@@ -176,7 +176,7 @@ contract OracleManipulationTest is Test {
         mockChainlink.setAnswer(BTC_PRICE * 99 / 100);
 
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
         assertNe(posId, bytes32(0), "Normal operation should succeed");
     }
 
@@ -189,7 +189,7 @@ contract OracleManipulationTest is Test {
 
         // Falls back to Chainlink only — should succeed
         vm.prank(trader);
-        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, emptyVaa);
+        bytes32 posId = engine.openPosition(BTC_USDC, true, MARGIN, LEVERAGE_10X, 0, 0, emptyVaa);
         assertNe(posId, bytes32(0), "Chainlink fallback used when Pyth returns zero price");
     }
 

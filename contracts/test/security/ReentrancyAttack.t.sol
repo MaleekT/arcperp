@@ -228,7 +228,7 @@ contract ReentrancyAttackTest is Test {
         vault_.deposit(100_000e6);
 
         vm.prank(trader_);
-        bytes32 posId = engine_.openPosition(BTC_USDC, true, 1_000e6, 2500, new bytes[](0));
+        bytes32 posId = engine_.openPosition(BTC_USDC, true, 1_000e6, 2500, 0, 0, new bytes[](0));
         vm.roll(block.number + 1);
 
         // Crash price

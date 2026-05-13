@@ -83,7 +83,7 @@ contract FuzzLiquidationTest is Test {
         vm.prank(trader);
         vault.deposit(totalDeposit);
         vm.prank(trader);
-        posId = engine.openPosition(BTC_USDC, isLong, margin, leverageBps, emptyVaa);
+        posId = engine.openPosition(BTC_USDC, isLong, margin, leverageBps, 0, 0, emptyVaa);
         vm.roll(block.number + 1);
     }
 

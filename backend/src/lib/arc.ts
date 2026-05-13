@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, defineChain, http, webSocket } from "viem";
+import { createPublicClient, createWalletClient, defineChain, http, webSocket, keccak256, toBytes } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 // ── Arc Network (Chain ID 5042002) ────────────────────────────────────────────
@@ -30,9 +30,9 @@ export const CONTRACTS = {
 // ── Pair constants ────────────────────────────────────────────────────────────
 
 export const PAIRS = {
-  BTC_USDC: "0x" + Buffer.from("BTC-USDC").toString("hex").padStart(64, "0") as `0x${string}`,
-  ETH_USDC: "0x" + Buffer.from("ETH-USDC").toString("hex").padStart(64, "0") as `0x${string}`,
-  EURC_USDC: "0x" + Buffer.from("EURC-USDC").toString("hex").padStart(64, "0") as `0x${string}`,
+  BTC_USDC: keccak256(toBytes("BTC-USDC")),
+  ETH_USDC: keccak256(toBytes("ETH-USDC")),
+  EURC_USDC: keccak256(toBytes("EURC-USDC")),
 } as const;
 
 export const PYTH_IDS = {
