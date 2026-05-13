@@ -28,23 +28,25 @@ jobs:
         env:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
+          echo "Key length: ${#DEPLOYER_PRIVATE_KEY} chars"
           mkdir -p deployments
           forge script script/MigratePerpEngine.s.sol \
             --tc MigratePerpEngine \
             --rpc-url https://rpc.testnet.arc.network \
             --broadcast \
-            --private-key $DEPLOYER_PRIVATE_KEY \
-            -vvv 2>&1 | tee migration_output.txt
+            --private-key "$DEPLOYER_PRIVATE_KEY" \
+            -vvv
 
-      - name: Print new addresses
+      - name: Show deployed addresses
         working-directory: contracts
         run: |
-          echo "======== NEW CONTRACT ADDRESSES ========"
-          cat deployments/arc_testnet.json
-          echo "========================================"
+          echo "=== broadcast run-latest.json ==="
+          cat broadcast/MigratePerpEngine.s.sol/5042002/run-latest.json || echo "broadcast file not found"
 
-      - name: Upload deployment JSON
+      - name: Upload broadcast
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: deployment-json
-          path: contracts/deployments/arc_testnet.json
+          name: deployment-artifacts
+          path: contracts/broadcast/
