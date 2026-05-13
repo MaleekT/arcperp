@@ -12,67 +12,6 @@ services:
       - key: PYTH_HERMES_URL
         value: https://hermes.pyth.network
 
-  - type: worker
-    name: arcperp-oracle-updater
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install --include=dev
-    startCommand: npm run oracle-updater
-    plan: free
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: ARC_RPC_URL
-        sync: false
-      - key: BOT_PRIVATE_KEY
-        sync: false
-      - key: MOCK_BTC_FEED
-        sync: false
-      - key: MOCK_ETH_FEED
-        sync: false
-      - key: MOCK_EURC_FEED
-        sync: false
-
-  - type: worker
-    name: arcperp-liquidator
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install --include=dev
-    startCommand: npm run liquidator
-    plan: free
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: ARC_RPC_URL
-        sync: false
-      - key: ARC_WS_URL
-        sync: false
-      - key: BOT_PRIVATE_KEY
-        sync: false
-      - key: PERP_ENGINE_ADDRESS
-        sync: false
-      - key: LIQUIDATION_ENGINE_ADDRESS
-        sync: false
-      - key: DEPLOYMENT_BLOCK
-        sync: false
-
-  - type: worker
-    name: arcperp-keeper
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install --include=dev
-    startCommand: npm run keeper
-    plan: free
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: ARC_RPC_URL
-        sync: false
-      - key: BOT_PRIVATE_KEY
-        sync: false
-      - key: PERP_ENGINE_ADDRESS
-        sync: false
-
   - type: web
     name: arcperp-order-server
     runtime: node
@@ -91,5 +30,3 @@ services:
         sync: false
       - key: PRICE_SERVER_WS_URL
         sync: false
-      - key: ORDER_SERVER_PORT
-        value: "8082"
