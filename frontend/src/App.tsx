@@ -52,6 +52,11 @@ function AppShell() {
               }}
             />
           </span>
+          {!connected && (
+            <span style={{ fontSize: 10, color: "var(--red)", letterSpacing: "0.02em" }}>
+              FEED OFFLINE — reconnecting…
+            </span>
+          )}
           <nav style={styles.pairNav}>
             {PAIRS.map((pair) => {
               const price = prices[pair.label];
