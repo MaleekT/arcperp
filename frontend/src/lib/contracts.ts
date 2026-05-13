@@ -19,7 +19,7 @@ function requireAddress(key: string, fallback: string): `0x${string}` {
   return value as `0x${string}`;
 }
 
-const rpcUrl = requireEnv("VITE_ARC_RPC_URL", "https://rpc.testnet.arc.network");
+const rpcUrl = requireEnv("VITE_ARC_RPC_URL", "https://rpc.quicknode.testnet.arc.network");
 
 export const arcTestnet = defineChain({
   id: 5042002,

@@ -4,7 +4,7 @@ import { arcTestnet, ADDRESSES, perpContract } from "../lib/contracts.js";
 import { PERP_ENGINE_ABI } from "../lib/abis/index.js";
 import { useWallet } from "../lib/wallet.js";
 
-const ORDER_SERVER = (import.meta.env.VITE_ORDER_SERVER_URL as string | undefined) ?? "http://localhost:8082";
+const ORDER_SERVER = (import.meta.env.VITE_ORDER_SERVER_URL as string | undefined) ?? "https://arcperp-order-server.onrender.com";
 const EXECUTOR_ADDRESS = (import.meta.env.VITE_ORDER_EXECUTOR_ADDRESS as string | undefined) ?? "";
 
 const pubClient = createPublicClient({ chain: arcTestnet, transport: http() });
